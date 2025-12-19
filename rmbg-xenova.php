@@ -37,15 +37,6 @@ class RMBG_Xenova {
         // Only enqueue if shortcode is present
         global $post;
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'rmbg_xenova')) {
-            // Enqueue Xenova Transformers.js library from CDN
-            wp_enqueue_script(
-                'transformers-js',
-                'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2',
-                array(),
-                '2.17.2',
-                true
-            );
-
             // Enqueue custom CSS
             wp_enqueue_style(
                 'rmbg-xenova-style',
@@ -58,10 +49,13 @@ class RMBG_Xenova {
             wp_enqueue_script(
                 'rmbg-xenova-processor',
                 RMBG_XENOVA_PLUGIN_URL . 'assets/js/rmbg-processor.js',
-                array('transformers-js'),
+                array(),
                 RMBG_XENOVA_VERSION,
                 true
             );
+
+            // Add module type attribute to the script
+            add_filter('script_loader_tag', array($this, 'add_module_type'), 10, 3);
 
             // Pass data to JavaScript
             wp_localize_script('rmbg-xenova-processor', 'rmbgXenovaData', array(
@@ -70,6 +64,16 @@ class RMBG_Xenova {
                 'modelName' => 'Xenova/modnet',
             ));
         }
+    }
+
+    /**
+     * Add type="module" to processor script
+     */
+    public function add_module_type($tag, $handle, $src) {
+        if ('rmbg-xenova-processor' === $handle) {
+            $tag = '<script type="module" src="' . esc_url($src) . '" id="' . esc_attr($handle) . '-js"></script>';
+        }
+        return $tag;
     }
 
     /**
