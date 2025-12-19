@@ -44,23 +44,6 @@ class RMBG_Xenova {
                 array(),
                 RMBG_XENOVA_VERSION
             );
-
-            // Enqueue custom JavaScript - it will dynamically import Transformers.js
-            wp_enqueue_script(
-                'rmbg-xenova-processor',
-                RMBG_XENOVA_PLUGIN_URL . 'assets/js/rmbg-processor.js',
-                array(),
-                RMBG_XENOVA_VERSION,
-                true
-            );
-
-            // Pass data to JavaScript
-            wp_localize_script('rmbg-xenova-processor', 'rmbgXenovaData', array(
-                'ajaxUrl' => admin_url('admin-ajax.php'),
-                'nonce' => wp_create_nonce('rmbg-xenova-nonce'),
-                'modelName' => 'Xenova/modnet',
-                'transformersUrl' => 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2'
-            ));
         }
     }
 
@@ -165,6 +148,11 @@ class RMBG_Xenova {
                 </div>
             </div>
         </div>
+
+        <!-- Load processor script inline with type="module" -->
+        <script type="module">
+            <?php echo file_get_contents(RMBG_XENOVA_PLUGIN_DIR . 'assets/js/rmbg-processor.js'); ?>
+        </script>
         <?php
         return ob_get_clean();
     }
