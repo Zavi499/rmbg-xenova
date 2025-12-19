@@ -37,15 +37,6 @@ class RMBG_Xenova {
         // Only enqueue if shortcode is present
         global $post;
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'rmbg_xenova')) {
-            // Enqueue Transformers.js library from CDN (using jsdelivr which provides proper CORS headers)
-            wp_enqueue_script(
-                'transformers-js',
-                'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js',
-                array(),
-                '2.17.2',
-                true
-            );
-
             // Enqueue custom CSS
             wp_enqueue_style(
                 'rmbg-xenova-style',
@@ -54,11 +45,11 @@ class RMBG_Xenova {
                 RMBG_XENOVA_VERSION
             );
 
-            // Enqueue custom JavaScript (depends on transformers-js)
+            // Enqueue custom JavaScript - it will dynamically import Transformers.js
             wp_enqueue_script(
                 'rmbg-xenova-processor',
                 RMBG_XENOVA_PLUGIN_URL . 'assets/js/rmbg-processor.js',
-                array('transformers-js'),
+                array(),
                 RMBG_XENOVA_VERSION,
                 true
             );
@@ -68,6 +59,7 @@ class RMBG_Xenova {
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('rmbg-xenova-nonce'),
                 'modelName' => 'Xenova/modnet',
+                'transformersUrl' => 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2'
             ));
         }
     }

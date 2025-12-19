@@ -1,19 +1,11 @@
 /**
  * Background Remover - Xenova Modnet
  * Client-side image processing with AI
+ * Uses dynamic import to load Transformers.js ES module
  */
 
 (function() {
     'use strict';
-
-    // Wait for Transformers.js library to be available
-    function waitForTransformers(callback) {
-        if (typeof Transformers !== 'undefined') {
-            callback();
-        } else {
-            setTimeout(() => waitForTransformers(callback), 100);
-        }
-    }
 
     class RMBGProcessor {
         constructor() {
@@ -23,26 +15,17 @@
             this.isModelLoading = false;
             this.currentImage = null;
             this.transformers = null;
+            this.isLibraryLoaded = false;
 
             // DOM elements
             this.elements = {};
 
-            // Wait for both DOM and Transformers.js to be ready
-            waitForTransformers(() => {
-                this.transformers = window.Transformers;
-
-                // Configure Transformers.js environment
-                this.transformers.env.allowLocalModels = false;
-                this.transformers.env.useBrowserCache = true;
-                this.transformers.env.backends.onnx.wasm.numThreads = 1;
-
-                // Initialize when DOM is ready
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', () => this.init());
-                } else {
-                    this.init();
-                }
-            });
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => this.init());
+            } else {
+                this.init();
+            }
         }
 
         /**
@@ -52,6 +35,37 @@
             this.cacheElements();
             this.attachEventListeners();
             this.checkModelCache();
+        }
+
+        /**
+         * Dynamically load Transformers.js library
+         */
+        async loadTransformersLibrary() {
+            if (this.isLibraryLoaded) {
+                return;
+            }
+
+            try {
+                console.log('Loading Transformers.js library...');
+
+                // Get CDN URL from localized data or use default
+                const cdnUrl = (window.rmbgXenovaData && window.rmbgXenovaData.transformersUrl)
+                    || 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+
+                // Dynamic import of the ES module
+                this.transformers = await import(cdnUrl);
+
+                // Configure environment
+                this.transformers.env.allowLocalModels = false;
+                this.transformers.env.useBrowserCache = true;
+                this.transformers.env.backends.onnx.wasm.numThreads = 1;
+
+                this.isLibraryLoaded = true;
+                console.log('Transformers.js library loaded successfully');
+            } catch (error) {
+                console.error('Failed to load Transformers.js:', error);
+                throw new Error('Failed to load AI library. Please check your internet connection.');
+            }
         }
 
         /**
@@ -183,19 +197,27 @@
             try {
                 // Show loading UI
                 this.showSection('modelLoading');
-                this.updateModelStatus('Initializing AI model...', 0);
+                this.updateModelStatus('Loading AI library...', 0);
+
+                // Load Transformers.js library first
+                if (!this.isLibraryLoaded) {
+                    await this.loadTransformersLibrary();
+                }
+
+                this.updateModelStatus('Initializing AI model...', 10);
 
                 const { AutoModel, AutoProcessor } = this.transformers;
 
-                this.updateModelStatus('Downloading model files...', 10);
+                this.updateModelStatus('Downloading model files...', 15);
 
                 // Load model with progress tracking
                 this.model = await AutoModel.from_pretrained('Xenova/modnet', {
                     progress_callback: (progress) => {
                         if (progress.status === 'progress' && progress.total > 0) {
-                            const percentage = Math.min(Math.round((progress.loaded / progress.total) * 70) + 10, 80);
-                            const fileSizeMB = (progress.total / (1024 * 1024)).toFixed(1);
-                            this.updateModelStatus(`Downloading: ${progress.file} (${fileSizeMB}MB)`, percentage);
+                            const percentage = Math.min(Math.round((progress.loaded / progress.total) * 65) + 15, 80);
+                            const loadedMB = (progress.loaded / (1024 * 1024)).toFixed(1);
+                            const totalMB = (progress.total / (1024 * 1024)).toFixed(1);
+                            this.updateModelStatus(`Downloading: ${progress.file} (${loadedMB}/${totalMB} MB)`, percentage);
                         } else if (progress.status === 'done') {
                             this.updateModelStatus('Processing model files...', 85);
                         }
@@ -222,7 +244,7 @@
                 console.error('Error loading model:', error);
                 this.isModelLoading = false;
                 this.hideSection('modelLoading');
-                throw new Error('Failed to load AI model. Please check your internet connection and try again.');
+                throw new Error('Failed to load AI model: ' + error.message);
             }
         }
 
